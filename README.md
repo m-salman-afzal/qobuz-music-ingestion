@@ -1,4 +1,10 @@
 # Qobuz-DL
+![Qobuz-DL](https://github.com/user-attachments/assets/45896382-1764-4339-824a-b31f32991480)
+
+---
+
+> [!IMPORTANT]
+> This repository does not contain any copyrighted material, or code to illegaly download music. Downloads are provided by the Qobuz API and should only be initiated by the API token owner. The author is **not responsible for the usage of this repository nor endorses it**, nor is the author responsible for any copies, forks, re-uploads made by other users, or anything else related to Qobuz-DL. Any live demo found online of this project is not associated with the authors of this repo. This is the author's only account and repository.
 
 A web-based music downloader for Qobuz with a modern UI and database storage for metadata management.
 
