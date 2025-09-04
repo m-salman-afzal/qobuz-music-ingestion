@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "Starting Qobuz-DL application..."
+echo "Starting qobuz-music-ingestion application..."
 
 echo "Current directory: $PWD"
 
-cd /volume1/homes/maven_admin/Qobuz-DL && npm run start
+cd /volume1/homes/maven_admin/qobuz-music-ingestion && npm run start
