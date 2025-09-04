@@ -1,0 +1,45 @@
+# Editor
+/.idea
+/.vscode
+
+# Project
+.env*
+/.next
+/node_modules
+/.husky
+/.circleci
+/.github
+README.md
+package-lock.json
+Dockerfile
+
+# Build
+dist/
+build/
+.next/
+.turbo/
+.pnpm-store/
+
+# Credentials
+*.crt
+*.key
+*.pem
+
+# Configs
+.prettierignore
+.eslintignore
+.gitattributes
+.dockerignore
+.gitignore
+.npmrc
+.nvmrc
+
+# Misc
+*.png
+
+# Docker
+/ops
+
+# images
+*.svg
+*.ico

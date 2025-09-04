@@ -1,0 +1,11 @@
+services:
+ qobuz-dl:
+    container_name: qobuz-dl
+    image: qobuz-dl
+    ports:
+     - 3000:3000
+    volumes:
+     - ./database.sqlite:/app/database.sqlite
+    environment:
+     - DATABASE_URL=file:/app/database.sqlite
+    restart: unless-stopped
