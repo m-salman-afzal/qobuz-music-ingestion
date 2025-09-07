@@ -1,31 +1,13 @@
 import {NextRequest, NextResponse} from "next/server";
-import {search} from "@/lib/qobuz-dl";
 import {MusicMetadataService} from "@/be/services/musicMetadata.service";
-import z from "zod";
-
-const searchParamsSchema = z.object({
-    q: z.string().min(1, "Query is required")
-});
-
-const FETCH_LIMIT = 500;
 
 export async function POST(request: NextRequest) {
-    const params = Object.fromEntries(new URL(request.url).searchParams.entries());
     try {
-        const {q} = searchParamsSchema.parse(params);
-        let isAlbumItemFinished = false;
-        let offset = 0;
+        const {album} = await request.json();
 
-        while (!isAlbumItemFinished) {
-            const searchResults = await search(q, FETCH_LIMIT, offset);
-            if (searchResults.albums.items.length === 0) {
-                isAlbumItemFinished = true;
-                break;
-            }
-            await MusicMetadataService.storeSearchResults(searchResults);
-
-            offset = searchResults.albums.offset + FETCH_LIMIT;
-        }
+        MusicMetadataService.processWholeAlbum(album).catch((error: any) => {
+            console.error("Error processing album metadata:", error);
+        });
 
         return new NextResponse(
             JSON.stringify({

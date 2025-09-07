@@ -303,6 +303,8 @@ const SearchView = () => {
                                                 }
                                             };
                                     });
+
+                                    console.log("newResults", newResults);
                                     setResults(newResults);
                                 }
                             } catch (error: any) {

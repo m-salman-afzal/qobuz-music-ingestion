@@ -1,4 +1,4 @@
-import {getAlbumInfo, QobuzSearchResults} from "../../lib/qobuz-dl";
+import {getAlbumInfo, QobuzAlbum, QobuzSearchResults} from "../../lib/qobuz-dl";
 import {ArtistRepository, CreateArtistData} from "../infra/database/repositories/artist.repo";
 import {GenreRepository, CreateGenreData} from "../infra/database/repositories/genre.repo";
 import {LabelRepository, CreateLabelData} from "../infra/database/repositories/label.repo";
@@ -6,50 +6,34 @@ import {AlbumRepository, CreateAlbumData} from "../infra/database/repositories/a
 import {TrackRepository, CreateTrackData} from "../infra/database/repositories/track.repository";
 
 export class MusicMetadataService {
-    static async storeSearchResults(searchResults: QobuzSearchResults): Promise<{
-        artists: number;
-        genres: number;
-        labels: number;
-        albums: number;
-        tracks: number;
-    }> {
-        const stats = {
-            artists: 0,
-            genres: 0,
-            labels: 0,
-            albums: 0,
-            tracks: 0
-        };
-
+    static async storeSearchResults(searchResults: QobuzSearchResults) {
         try {
             console.log("Starting to process artists...");
             for (const qobuzArtist of searchResults.artists.items) {
                 try {
+                    if (
+                        qobuzArtist.name.toLowerCase().includes("various") &&
+                        qobuzArtist.name.toLowerCase().includes("artists")
+                    )
+                        continue;
+
                     console.log(`Processing artist: ${qobuzArtist.name} (Qobuz ID: ${qobuzArtist.id})`);
                     await this.processArtist(qobuzArtist);
-                    stats.artists++;
                 } catch (error) {
                     console.error(`Error processing artist: ${qobuzArtist.name} (Qobuz ID: ${qobuzArtist.id})`, error);
                 }
             }
-            console.log(`Finished processing artists. Total: ${stats.artists}`);
 
             console.log("Starting to process albums...");
             for (const qobuzAlbum of searchResults.albums.items) {
                 try {
-                    console.log(`Processing album: ${qobuzAlbum.title} (Qobuz ID: ${qobuzAlbum.qobuz_id})`);
-                    const artist = await this.processArtist(qobuzAlbum.artist);
+                    if (
+                        qobuzAlbum.artist.name.toLowerCase().includes("various") &&
+                        qobuzAlbum.artist.name.toLowerCase().includes("artists")
+                    )
+                        continue;
 
-                    const genre = await this.processGenre(qobuzAlbum.genre);
-                    stats.genres++;
-                    console.log(`Processed genre: ${qobuzAlbum.genre?.name} (Qobuz ID: ${qobuzAlbum.genre?.id})`);
-
-                    const label = await this.processLabel(qobuzAlbum.label);
-                    stats.labels++;
-                    console.log(`Processed label: ${qobuzAlbum.label?.name} (Qobuz ID: ${qobuzAlbum.label?.id})`);
-
-                    await this.processAlbum(qobuzAlbum, artist.rId, genre.rId, label.rId);
-                    stats.albums++;
+                    await this.processWholeAlbum(qobuzAlbum);
                 } catch (error) {
                     console.error(
                         `Error processing album: ${qobuzAlbum.title} (Qobuz ID: ${qobuzAlbum.qobuz_id})`,
@@ -57,11 +41,16 @@ export class MusicMetadataService {
                     );
                 }
             }
-            console.log(`Finished processing albums. Total: ${stats.albums}`);
 
             console.log("Starting to process standalone tracks...");
             for (const qobuzTrack of searchResults.tracks.items) {
                 try {
+                    if (
+                        qobuzTrack.album.artist.name.toLowerCase().includes("various") &&
+                        qobuzTrack.album.artist.name.toLowerCase().includes("artists")
+                    )
+                        continue;
+
                     console.log(`Processing track: ${qobuzTrack.title} (Qobuz ID: ${qobuzTrack.id})`);
                     const artist = await this.processArtist(qobuzTrack.album.artist);
                     const genre = await this.processGenre(qobuzTrack.album.genre);
@@ -70,19 +59,27 @@ export class MusicMetadataService {
                     const album = await this.processAlbum(qobuzTrack.album, artist.rId, genre.rId, label.rId);
 
                     await this.processTrack(qobuzTrack, album.rId);
-                    stats.tracks++;
                 } catch (error) {
                     console.error(`Error processing track: ${qobuzTrack.title} (Qobuz ID: ${qobuzTrack.id})`, error);
                 }
             }
-            console.log(`Finished processing tracks. Total: ${stats.tracks}`);
-
-            console.log("All search results processed. Stats:", stats);
-            return stats;
         } catch (error) {
             console.error("Error storing search results:", error);
             throw error;
         }
+    }
+
+    static async processWholeAlbum(qobuzAlbum: QobuzAlbum) {
+        console.log(`Processing album: ${qobuzAlbum.title} (Qobuz ID: ${qobuzAlbum.qobuz_id})`);
+        const artist = await this.processArtist(qobuzAlbum.artist);
+
+        const genre = await this.processGenre(qobuzAlbum.genre);
+        console.log(`Processed genre: ${qobuzAlbum.genre?.name} (Qobuz ID: ${qobuzAlbum.genre?.id})`);
+
+        const label = await this.processLabel(qobuzAlbum.label);
+        console.log(`Processed label: ${qobuzAlbum.label?.name} (Qobuz ID: ${qobuzAlbum.label?.id})`);
+
+        await this.processAlbum(qobuzAlbum, artist.rId, genre.rId, label.rId);
     }
 
     private static async processArtist(qobuzArtist: any) {
