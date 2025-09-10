@@ -88,11 +88,12 @@ export class TrackRepository {
 
     static async updateDownloadStatus(
         id: number,
-        status: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED"
+        status: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED",
+        folderPath?: string
     ): Promise<TrackData | null> {
         const [track] = await db
             .update(trackModel)
-            .set({downloadStatus: status})
+            .set({downloadStatus: status, folderPath: folderPath})
             .where(sql`data->>'id' = ${id}`)
             .returning();
         return track || null;

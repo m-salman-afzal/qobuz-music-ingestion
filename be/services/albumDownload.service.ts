@@ -4,6 +4,7 @@ import path from "path";
 import {AlbumRepository, AlbumData} from "../infra/database/repositories/album.repo";
 import {TrackRepository, TrackWithAlbumAndArtistAndGenre} from "../infra/database/repositories/track.repository";
 import {MusicUrlService} from "./musicUrl.service";
+import {GLOBAL_CONSTANTS} from "../constants/global.constant";
 
 export interface AlbumWithTracksAndDetails {
     album: AlbumData;
@@ -76,11 +77,7 @@ export class AlbumDownloadService {
         }
 
         try {
-            console.log(`Starting download for track ID: ${track.tracks.data.id}`);
-
-            // Update status to processing
-            await TrackRepository.updateDownloadStatus(track.tracks.data.id, "PROCESSING");
-            console.log(`Updated track ${track.tracks.data.id} status to processing`);
+            await TrackRepository.updateDownloadStatus(track.tracks.data.id, "PROCESSING", folderPath);
 
             const urlResult = await MusicUrlService.getDownloadUrl({
                 track_id: track.tracks.data.id,
@@ -147,16 +144,12 @@ export class AlbumDownloadService {
         }
 
         try {
-            console.log(`Starting download for album ID: ${album.data?.id}`);
-
             await AlbumRepository.updateByQobuzId(Number(album.data?.qobuz_id), {
                 downloadStatus: "PROCESSING"
             });
-            console.log(`Updated album ${album.data?.id} status to processing`);
 
             await this.ensureDownloadsDir();
 
-            // Use the first track to get album/artist/genre info for folder structure
             const firstTrack = tracks[0];
             const albumTitle = firstTrack.albums?.data?.title ? firstTrack.albums.data.title : "Unknown Album";
             const artistName = firstTrack.artists?.name ? firstTrack.artists.name : "Unknown Artist";
@@ -165,7 +158,14 @@ export class AlbumDownloadService {
                 ? new Date(Number(firstTrack.albums.data.released_at) * 1000).getFullYear()
                 : "Unknown Release Year";
 
-            const albumFolderTitle = `${albumTitle} --- ${genreName} --- ${releaseYear}`;
+            const sanitize = (str: string) =>
+                str
+                    .replace(/[<>:"'/\\|?*\u0000-\u001F]/g, "")
+                    .replace(/''/g, "")
+                    .replace(/\s+/g, " ")
+                    .trim();
+
+            const albumFolderTitle = `${sanitize(albumTitle)} --- ${sanitize(genreName)} --- ${sanitize(String(releaseYear))}`;
             const folderPath = path.join(this.downloadsDir, artistName, albumFolderTitle);
 
             try {
@@ -174,16 +174,13 @@ export class AlbumDownloadService {
                 await fs.mkdir(folderPath, {recursive: true});
             }
 
-            // Download album cover first
             await this.downloadAlbumCover(album, folderPath);
 
-            // Download all tracks in the album
             for (const [index, track] of tracks.entries()) {
                 try {
                     const success = await this.downloadTrackForAlbum(track, folderPath, index + 1);
                     if (success) {
                         downloadedTracks++;
-                        console.log(`Successfully downloaded track ${track.tracks?.data?.id}`);
                     } else {
                         failedTracks++;
                         const errorMsg = `Failed to download track ${track.tracks?.data?.id}`;
@@ -204,7 +201,6 @@ export class AlbumDownloadService {
             await AlbumRepository.updateByQobuzId(Number(album.data?.qobuz_id), {
                 downloadStatus: albumStatus
             });
-            console.log(`Updated album ${album.data?.id} status to ${albumStatus}`);
 
             return {
                 success: downloadedTracks > 0,
@@ -219,7 +215,6 @@ export class AlbumDownloadService {
                 await AlbumRepository.updateByQobuzId(Number(album.data?.qobuz_id), {
                     downloadStatus: "FAILED"
                 });
-                console.log(`Updated album ${album.data?.id} status to failed`);
             } catch (updateError) {
                 console.error(`Failed to update album ${album.data?.id} status to failed:`, updateError);
             }
@@ -244,8 +239,6 @@ export class AlbumDownloadService {
         totalTracksFailed: number;
         errors: string[];
     }> {
-        console.log("Starting to process pending album downloads...");
-
         const errors: string[] = [];
         let processed = 0;
         let successful = 0;
@@ -255,7 +248,6 @@ export class AlbumDownloadService {
 
         try {
             const pendingAlbums = await AlbumRepository.findAlbumsByDownloadStatus("PENDING", albumCountToDownload);
-            console.log(`Found ${pendingAlbums.length} pending albums`);
 
             if (pendingAlbums.length === 0) {
                 return {
@@ -270,7 +262,6 @@ export class AlbumDownloadService {
 
             for (const album of pendingAlbums) {
                 processed++;
-                console.log(`Processing album ${processed}/${pendingAlbums.length}: ID ${album.data?.id}`);
 
                 try {
                     const tracks = await TrackRepository.findTracksByAlbumRId(album.rId);
@@ -286,7 +277,6 @@ export class AlbumDownloadService {
 
                     if (result.success) {
                         successful++;
-                        console.log(`Successfully downloaded album ${album.data?.id}`);
                     } else {
                         failed++;
                         const errorMsg = `Failed to download album ${album.data?.id}`;
@@ -306,9 +296,7 @@ export class AlbumDownloadService {
             errors.push(errorMsg);
         }
 
-        console.log(
-            `Album download processing complete. Albums Processed: ${processed}, Successful: ${successful}, Failed: ${failed}, Total Tracks Downloaded: ${totalTracksDownloaded}, Total Tracks Failed: ${totalTracksFailed}`
-        );
+        GLOBAL_CONSTANTS.IS_ALBUMS_PROCESSING = false;
 
         return {
             processed,

@@ -9,6 +9,7 @@ export const trackModel = sqliteTable("tracks", {
     uploadStatus: text().default("PENDING").$type<"PENDING" | "PROCESSING" | "SUCCESS" | "FAILED">(),
     downloadStatus: text().default("PENDING").$type<"PENDING" | "PROCESSING" | "SUCCESS" | "FAILED">(),
     isrc: text(),
+    folderPath: text(),
     data: text({mode: "json"}).$type<{
         audio_info?: {
             replaygain_track_gain?: number;
