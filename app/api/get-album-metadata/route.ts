@@ -1,11 +1,14 @@
 import {NextRequest, NextResponse} from "next/server";
 import {MusicMetadataService} from "@/be/services/musicMetadata.service";
+import {getAlbumInfo} from "@/lib/qobuz-dl";
 
 export async function POST(request: NextRequest) {
     try {
         const {album} = await request.json();
 
-        MusicMetadataService.processWholeAlbum(album).catch((error: any) => {
+        const albumInfo = await getAlbumInfo(album.id);
+
+        MusicMetadataService.processWholeAlbum(album, albumInfo).catch((error: any) => {
             console.error("Error processing album metadata:", error);
         });
 

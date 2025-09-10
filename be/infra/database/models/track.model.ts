@@ -8,6 +8,7 @@ export const trackModel = sqliteTable("tracks", {
     albumId: text().references(() => albumModel.rId),
     uploadStatus: text().default("PENDING").$type<"PENDING" | "PROCESSING" | "SUCCESS" | "FAILED">(),
     downloadStatus: text().default("PENDING").$type<"PENDING" | "PROCESSING" | "SUCCESS" | "FAILED">(),
+    isrc: text(),
     data: text({mode: "json"}).$type<{
         audio_info?: {
             replaygain_track_gain?: number;

@@ -12,6 +12,7 @@ export const albumModel = sqliteTable("albums", {
     artistId: text().references(() => artistModel.rId),
     labelId: text().references(() => labelModel.rId),
     genreId: text().references(() => genreModel.rId),
+    upc: text(),
     uploadStatus: text().default("PENDING").$type<"PENDING" | "PROCESSING" | "SUCCESS" | "FAILED">(),
     downloadStatus: text().default("PENDING").$type<"PENDING" | "PROCESSING" | "SUCCESS" | "FAILED">(),
     data: text({mode: "json"}).$type<{

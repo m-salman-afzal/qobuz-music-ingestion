@@ -41,8 +41,18 @@ export class TrackRepository {
         return track || null;
     }
 
+    static async findByIsrc(isrc: string): Promise<TrackData | null> {
+        const [track] = await db.select().from(trackModel).where(eq(trackModel.isrc, isrc));
+        return track || null;
+    }
+
     static async updateById(sId: number, data: UpdateTrackData): Promise<TrackData | null> {
         const [track] = await db.update(trackModel).set(data).where(eq(trackModel.sId, sId)).returning();
+        return track || null;
+    }
+
+    static async updateByIsrc(isrc: string, data: UpdateTrackData): Promise<TrackData | null> {
+        const [track] = await db.update(trackModel).set(data).where(eq(trackModel.isrc, isrc)).returning();
         return track || null;
     }
 
