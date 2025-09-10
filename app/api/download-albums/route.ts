@@ -3,7 +3,7 @@ import {AlbumDownloadService} from "@/be/services/albumDownload.service";
 import {GLOBAL_CONSTANTS} from "@/be/constants/global.constant";
 
 export async function POST(request: Request) {
-    if (GLOBAL_CONSTANTS.IS_ALBUMS_PROCESSING) {
+    if (GLOBAL_CONSTANTS.IS_ALBUMS_PROCESSING || GLOBAL_CONSTANTS.IS_METADATA_PROCESSING) {
         return new NextResponse(
             JSON.stringify({
                 success: false,

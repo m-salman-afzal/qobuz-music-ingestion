@@ -11,7 +11,7 @@ const searchParamsSchema = z.object({
 const FETCH_LIMIT = 500;
 
 export async function POST(request: NextRequest) {
-    if (GLOBAL_CONSTANTS.IS_METADATA_PROCESSING) {
+    if (GLOBAL_CONSTANTS.IS_METADATA_PROCESSING || GLOBAL_CONSTANTS.IS_ALBUMS_PROCESSING) {
         return new NextResponse(
             JSON.stringify({
                 success: false,
