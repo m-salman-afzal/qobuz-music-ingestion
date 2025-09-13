@@ -2,7 +2,7 @@ import {NextRequest, NextResponse} from "next/server";
 import {search} from "@/lib/qobuz-dl";
 import {MusicMetadataService} from "@/be/services/musicMetadata.service";
 import z from "zod";
-import {GLOBAL_CONSTANTS} from "@/be/constants/global.constant";
+import {ConfigService} from "@/be/services/config.service";
 
 const searchParamsSchema = z.object({
     q: z.string().min(1, "Query is required")
@@ -11,7 +11,18 @@ const searchParamsSchema = z.object({
 const FETCH_LIMIT = 500;
 
 export async function POST(request: NextRequest) {
-    if (GLOBAL_CONSTANTS.IS_METADATA_PROCESSING || GLOBAL_CONSTANTS.IS_ALBUMS_PROCESSING) {
+    const [config] = await ConfigService.getConfig();
+    if (!config.data) {
+        return new NextResponse(
+            JSON.stringify({
+                success: false,
+                error: "Config not found"
+            }),
+            {status: 400}
+        );
+    }
+
+    if (config.data.isMetadataProcessing || config.data.isAlbumsProcessing) {
         return new NextResponse(
             JSON.stringify({
                 success: false,
@@ -21,7 +32,8 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    GLOBAL_CONSTANTS.IS_METADATA_PROCESSING = true;
+    config.data.isMetadataProcessing = true;
+    await ConfigService.updateConfig(config);
 
     const params = Object.fromEntries(new URL(request.url).searchParams.entries());
     try {
@@ -37,16 +49,18 @@ export async function POST(request: NextRequest) {
                     const searchResults = await search(q, FETCH_LIMIT, offset);
                     if (searchResults.albums.items.length === 0) {
                         isAlbumItemFinished = true;
-                        GLOBAL_CONSTANTS.IS_METADATA_PROCESSING = false;
+                        config.data!.isMetadataProcessing = false;
+                        await ConfigService.updateConfig(config);
                         break;
                     }
 
-                    await MusicMetadataService.storeSearchResults(searchResults);
+                    await MusicMetadataService.storeSearchResults(searchResults, config);
 
                     offset = searchResults.albums.offset + FETCH_LIMIT;
                 } catch (error) {
                     console.error("Error in background music metadata processing:", error);
-                    GLOBAL_CONSTANTS.IS_METADATA_PROCESSING = false;
+                    config.data!.isMetadataProcessing = false;
+                    await ConfigService.updateConfig(config);
                     break;
                 }
             }
@@ -63,7 +77,8 @@ export async function POST(request: NextRequest) {
         );
     } catch (error: any) {
         console.error("Error storing music metadata:", error);
-        GLOBAL_CONSTANTS.IS_METADATA_PROCESSING = false;
+        config.data.isMetadataProcessing = false;
+        await ConfigService.updateConfig(config);
         return new NextResponse(
             JSON.stringify({
                 success: false,

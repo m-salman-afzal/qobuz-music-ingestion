@@ -1,9 +1,19 @@
 import {NextResponse} from "next/server";
 import {AlbumDownloadService} from "@/be/services/albumDownload.service";
-import {GLOBAL_CONSTANTS} from "@/be/constants/global.constant";
+import {ConfigService} from "@/be/services/config.service";
 
 export async function POST(request: Request) {
-    if (GLOBAL_CONSTANTS.IS_ALBUMS_PROCESSING || GLOBAL_CONSTANTS.IS_METADATA_PROCESSING) {
+    const [config] = await ConfigService.getConfig();
+    if (!config.data) {
+        return new NextResponse(
+            JSON.stringify({
+                success: false,
+                error: "Config not found"
+            }),
+            {status: 400}
+        );
+    }
+    if (config.data.isAlbumsProcessing || config.data.isMetadataProcessing) {
         return new NextResponse(
             JSON.stringify({
                 success: false,
@@ -13,16 +23,18 @@ export async function POST(request: Request) {
         );
     }
 
-    GLOBAL_CONSTANTS.IS_ALBUMS_PROCESSING = true;
+    config.data.isAlbumsProcessing = true;
+    await ConfigService.updateConfig(config);
 
     try {
         const {albumCountToDownload} = await request.json();
 
         // Start the album download process in the background, don't await it
-        AlbumDownloadService.processPendingAlbumDownloads(albumCountToDownload).catch((error: any) => {
+        AlbumDownloadService.processPendingAlbumDownloads(albumCountToDownload).catch(async (error: any) => {
             // Optionally log the error or handle it as needed
             console.error("Background album download error:", error);
-            GLOBAL_CONSTANTS.IS_ALBUMS_PROCESSING = false;
+            config.data!.isAlbumsProcessing = false;
+            await ConfigService.updateConfig(config);
         });
 
         return new NextResponse(
@@ -35,7 +47,8 @@ export async function POST(request: Request) {
             {status: 200}
         );
     } catch (error: any) {
-        GLOBAL_CONSTANTS.IS_ALBUMS_PROCESSING = false;
+        config.data.isAlbumsProcessing = false;
+        await ConfigService.updateConfig(config);
         return new NextResponse(
             JSON.stringify({
                 success: false,

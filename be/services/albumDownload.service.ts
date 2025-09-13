@@ -4,7 +4,7 @@ import path from "path";
 import {AlbumRepository, AlbumData} from "../infra/database/repositories/album.repo";
 import {TrackRepository, TrackWithAlbumAndArtistAndGenre} from "../infra/database/repositories/track.repository";
 import {MusicUrlService} from "./musicUrl.service";
-import {GLOBAL_CONSTANTS} from "../constants/global.constant";
+import {ConfigService} from "./config.service";
 
 export interface AlbumWithTracksAndDetails {
     album: AlbumData;
@@ -296,7 +296,12 @@ export class AlbumDownloadService {
             errors.push(errorMsg);
         }
 
-        GLOBAL_CONSTANTS.IS_ALBUMS_PROCESSING = false;
+        const [config] = await ConfigService.getConfig();
+        if (!config.data) {
+            throw new Error("Config not found");
+        }
+        config.data.isAlbumsProcessing = false;
+        await ConfigService.updateConfig(config);
 
         return {
             processed,

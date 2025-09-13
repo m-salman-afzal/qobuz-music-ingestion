@@ -1,6 +1,0 @@
-export const GLOBAL_CONSTANTS = {
-    CONCURRENT_LIMIT: 100,
-    IS_METADATA_PROCESSING: false,
-    IS_ALBUMS_PROCESSING: false,
-    IS_ALBUM_PROCESSING: false
-};

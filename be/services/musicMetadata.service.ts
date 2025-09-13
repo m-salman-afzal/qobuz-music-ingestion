@@ -4,10 +4,10 @@ import {GenreRepository, CreateGenreData} from "../infra/database/repositories/g
 import {LabelRepository, CreateLabelData} from "../infra/database/repositories/label.repo";
 import {AlbumRepository, CreateAlbumData} from "../infra/database/repositories/album.repo";
 import {TrackRepository, CreateTrackData} from "../infra/database/repositories/track.repository";
+import {ConfigData} from "../infra/database/repositories/config.repo";
 
-const CONCURRENT_LIMIT = 100;
 export class MusicMetadataService {
-    static async storeSearchResults(searchResults: QobuzSearchResults) {
+    static async storeSearchResults(searchResults: QobuzSearchResults, config: ConfigData) {
         try {
             console.time("processArtist");
             for (const qobuzArtist of searchResults.artists.items) {
@@ -30,7 +30,10 @@ export class MusicMetadataService {
                 return getAlbumInfo(qobuzAlbum.id);
             });
 
-            const albumWholePromises = await this.getAlbumInfoInBatches(albumWholeUrlPromises, CONCURRENT_LIMIT);
+            const albumWholePromises = await this.getAlbumInfoInBatches(
+                albumWholeUrlPromises,
+                config.data!.concurrentLimit
+            );
             console.timeEnd("albumWholeUrl");
 
             console.time("processWholeAlbum");
@@ -59,7 +62,7 @@ export class MusicMetadataService {
                 return getAlbumInfo(qobuzTrack.album.id);
             });
 
-            const albumPromises = await this.getAlbumInfoInBatches(albumUrlPromises, CONCURRENT_LIMIT);
+            const albumPromises = await this.getAlbumInfoInBatches(albumUrlPromises, config.data!.concurrentLimit);
             console.timeEnd("albumUrl");
 
             console.time("processTrack");

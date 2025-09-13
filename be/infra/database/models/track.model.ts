@@ -3,6 +3,7 @@ import {text, sqliteTable} from "drizzle-orm/sqlite-core";
 
 import {albumModel} from "./album.model";
 import {baseModel} from "./base.model";
+
 export const trackModel = sqliteTable("tracks", {
     ...baseModel("track"),
     albumId: text().references(() => albumModel.rId),

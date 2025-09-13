@@ -42,3 +42,4 @@ next-env.d.ts
 # project
 downloads
 be/infra/database/*.sqlite
+temp/
