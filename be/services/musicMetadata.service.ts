@@ -10,19 +10,19 @@ export class MusicMetadataService {
     static async storeSearchResults(searchResults: QobuzSearchResults, config: ConfigData) {
         try {
             console.time("processArtist");
-            for (const qobuzArtist of searchResults.artists.items) {
-                try {
-                    if (
-                        qobuzArtist.name.toLowerCase().includes("various") &&
-                        qobuzArtist.name.toLowerCase().includes("artists")
-                    )
-                        continue;
+            // for (const qobuzArtist of searchResults.artists.items) {
+            //     try {
+            //         if (
+            //             qobuzArtist.name.toLowerCase().includes("various") &&
+            //             qobuzArtist.name.toLowerCase().includes("artists")
+            //         )
+            //             continue;
 
-                    await this.processArtist(qobuzArtist);
-                } catch (error) {
-                    console.error(`Error processing artist: ${qobuzArtist.name} (Qobuz ID: ${qobuzArtist.id})`, error);
-                }
-            }
+            //         await this.processArtist(qobuzArtist);
+            //     } catch (error) {
+            //         console.error(`Error processing artist: ${qobuzArtist.name} (Qobuz ID: ${qobuzArtist.id})`, error);
+            //     }
+            // }
             console.timeEnd("processArtist");
 
             console.time("albumWholeUrl");
@@ -55,7 +55,9 @@ export class MusicMetadataService {
             }
             console.timeEnd("processWholeAlbum");
 
-            await new Promise((resolve) => setTimeout(resolve, 60000));
+            if (config.data!.concurrentLimit > 10) {
+                await new Promise((resolve) => setTimeout(resolve, 60000));
+            }
 
             console.time("albumUrl");
             const albumUrlPromises = searchResults.tracks.items.map((qobuzTrack) => {
@@ -225,7 +227,7 @@ export class MusicMetadataService {
     }
 
     private static async processTrack(qobuzTrack: any, albumId: string) {
-        let track = await TrackRepository.findByIsrc(qobuzTrack.isrc);
+        let track = await TrackRepository.findByIsrcAndTitle(qobuzTrack.isrc, qobuzTrack.title);
 
         if (!track) {
             const trackData: CreateTrackData = {

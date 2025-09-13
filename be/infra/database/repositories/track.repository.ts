@@ -1,4 +1,4 @@
-import {eq, sql} from "drizzle-orm";
+import {eq, sql, and} from "drizzle-orm";
 import {db} from "../connection";
 import {trackModel} from "../models/track.model";
 import {albumModel, artistModel, genreModel} from "../models";
@@ -41,8 +41,11 @@ export class TrackRepository {
         return track || null;
     }
 
-    static async findByIsrc(isrc: string): Promise<TrackData | null> {
-        const [track] = await db.select().from(trackModel).where(eq(trackModel.isrc, isrc));
+    static async findByIsrcAndTitle(isrc: string, title: string): Promise<TrackData | null> {
+        const [track] = await db
+            .select()
+            .from(trackModel)
+            .where(and(eq(trackModel.isrc, isrc), sql`data->>'title' = ${title}`));
         return track || null;
     }
 
