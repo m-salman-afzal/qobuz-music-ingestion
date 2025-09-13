@@ -5,39 +5,40 @@ import {LabelRepository, CreateLabelData} from "../infra/database/repositories/l
 import {AlbumRepository, CreateAlbumData} from "../infra/database/repositories/album.repo";
 import {TrackRepository, CreateTrackData} from "../infra/database/repositories/track.repository";
 import {ConfigData} from "../infra/database/repositories/config.repo";
+import {ConfigService} from "./config.service";
 
 export class MusicMetadataService {
     static async storeSearchResults(searchResults: QobuzSearchResults, config: ConfigData) {
         try {
             console.time("processArtist");
-            // for (const qobuzArtist of searchResults.artists.items) {
-            //     try {
-            //         if (
-            //             qobuzArtist.name.toLowerCase().includes("various") &&
-            //             qobuzArtist.name.toLowerCase().includes("artists")
-            //         )
-            //             continue;
+            for (const qobuzArtist of searchResults.artists.items) {
+                try {
+                    if (
+                        qobuzArtist.name.toLowerCase().includes("various") &&
+                        qobuzArtist.name.toLowerCase().includes("artists")
+                    )
+                        continue;
 
-            //         await this.processArtist(qobuzArtist);
-            //     } catch (error) {
-            //         console.error(`Error processing artist: ${qobuzArtist.name} (Qobuz ID: ${qobuzArtist.id})`, error);
-            //     }
-            // }
+                    await this.processArtist(qobuzArtist);
+                } catch (error) {
+                    console.error(`Error processing artist: ${qobuzArtist.name} (Qobuz ID: ${qobuzArtist.id})`, error);
+                }
+            }
             console.timeEnd("processArtist");
 
-            console.time("albumWholeUrl");
-            const albumWholeUrlPromises = searchResults.albums.items.map((qobuzAlbum) => {
-                return getAlbumInfo(qobuzAlbum.id);
-            });
+            // console.time("albumWholeUrl");
+            // const albumWholeUrlPromises = searchResults.albums.items.map((qobuzAlbum) => {
+            //     return getAlbumInfo(qobuzAlbum.id);
+            // });
 
-            const albumWholePromises = await this.getAlbumInfoInBatches(
-                albumWholeUrlPromises,
-                config.data!.concurrentLimit
-            );
-            console.timeEnd("albumWholeUrl");
+            // const albumWholePromises = await this.getAlbumInfoInBatches(
+            //     albumWholeUrlPromises,
+            //     config.data!.concurrentLimit
+            // );
+            // console.timeEnd("albumWholeUrl");
 
             console.time("processWholeAlbum");
-            for (const [index, qobuzAlbum] of searchResults.albums.items.entries()) {
+            for (const [, qobuzAlbum] of searchResults.albums.items.entries()) {
                 try {
                     if (
                         qobuzAlbum.artist.name.toLowerCase().includes("various") &&
@@ -45,7 +46,10 @@ export class MusicMetadataService {
                     )
                         continue;
 
-                    await this.processWholeAlbum(qobuzAlbum, albumWholePromises[index]);
+                    await this.processWholeAlbum({
+                        qobuzAlbum: qobuzAlbum
+                        // albumData: albumWholePromises[index]
+                    });
                 } catch (error) {
                     console.error(
                         `Error processing album: ${qobuzAlbum.title} (Qobuz ID: ${qobuzAlbum.qobuz_id})`,
@@ -59,16 +63,16 @@ export class MusicMetadataService {
                 await new Promise((resolve) => setTimeout(resolve, 60000));
             }
 
-            console.time("albumUrl");
-            const albumUrlPromises = searchResults.tracks.items.map((qobuzTrack) => {
-                return getAlbumInfo(qobuzTrack.album.id);
-            });
+            // console.time("albumUrl");
+            // const albumUrlPromises = searchResults.tracks.items.map((qobuzTrack) => {
+            //     return getAlbumInfo(qobuzTrack.album.id);
+            // });
 
-            const albumPromises = await this.getAlbumInfoInBatches(albumUrlPromises, config.data!.concurrentLimit);
-            console.timeEnd("albumUrl");
+            // const albumPromises = await this.getAlbumInfoInBatches(albumUrlPromises, config.data!.concurrentLimit);
+            // console.timeEnd("albumUrl");
 
             console.time("processTrack");
-            for (const [index, qobuzTrack] of searchResults.tracks.items.entries()) {
+            for (const [, qobuzTrack] of searchResults.tracks.items.entries()) {
                 try {
                     if (
                         qobuzTrack.album.artist.name.toLowerCase().includes("various") &&
@@ -80,13 +84,13 @@ export class MusicMetadataService {
                     const genre = await this.processGenre(qobuzTrack.album.genre);
                     const label = await this.processLabel(qobuzTrack.album.label);
 
-                    const album = await this.processAlbum(
-                        qobuzTrack.album,
-                        albumPromises[index],
-                        artist.rId,
-                        genre.rId,
-                        label.rId
-                    );
+                    const album = await this.processAlbum({
+                        qobuzAlbum: qobuzTrack.album,
+                        // albumData: albumPromises[index],
+                        artistId: artist.rId,
+                        genreId: genre.rId,
+                        labelId: label.rId
+                    });
 
                     await this.processTrack(qobuzTrack, album.rId);
                 } catch (error) {
@@ -95,19 +99,27 @@ export class MusicMetadataService {
             }
             console.timeEnd("processTrack");
         } catch (error) {
+            config.data!.isMetadataProcessing = false;
+            await ConfigService.updateConfig(config);
             console.error("Error storing search results:", error);
             throw error;
         }
     }
 
-    static async processWholeAlbum(qobuzAlbum: QobuzAlbum, albumData: any) {
-        const artist = await this.processArtist(qobuzAlbum.artist);
+    static async processWholeAlbum(param: {qobuzAlbum: QobuzAlbum; albumData?: any}) {
+        const artist = await this.processArtist(param.qobuzAlbum.artist);
 
-        const genre = await this.processGenre(qobuzAlbum.genre);
+        const genre = await this.processGenre(param.qobuzAlbum.genre);
 
-        const label = await this.processLabel(qobuzAlbum.label);
+        const label = await this.processLabel(param.qobuzAlbum.label);
 
-        await this.processAlbum(qobuzAlbum, albumData, artist.rId, genre.rId, label.rId);
+        await this.processAlbum({
+            qobuzAlbum: param.qobuzAlbum,
+            // albumData: param.albumData,
+            artistId: artist.rId,
+            genreId: genre.rId,
+            labelId: label.rId
+        });
     }
 
     private static async processArtist(qobuzArtist: any) {
@@ -177,25 +189,25 @@ export class MusicMetadataService {
         return label!;
     }
 
-    private static async processAlbum(
-        qobuzAlbum: QobuzAlbum,
-        albumData: any,
-        artistId: string,
-        genreId: string,
-        labelId: string
-    ) {
-        let album = await AlbumRepository.findByQobuzId(qobuzAlbum.qobuz_id);
+    private static async processAlbum(param: {
+        qobuzAlbum: QobuzAlbum;
+        albumData?: any;
+        artistId: string;
+        genreId: string;
+        labelId: string;
+    }) {
+        let album = await AlbumRepository.findByQobuzId(param.qobuzAlbum.qobuz_id);
 
         let trackItems: any = null;
         let fullAlbumData: any = null;
-        if (qobuzAlbum.url && albumData) {
+        if (param.qobuzAlbum.url) {
             try {
-                const {tracks, ...restAlbumData} = albumData;
+                const {tracks, ...restAlbumData} = await getAlbumInfo(param.qobuzAlbum.id);
                 trackItems = tracks.items;
                 fullAlbumData = restAlbumData;
             } catch (error) {
                 console.error(
-                    `Error getting album info: ${qobuzAlbum.title} (Qobuz ID: ${qobuzAlbum.qobuz_id})`,
+                    `Error getting album info: ${param.qobuzAlbum.title} (Qobuz ID: ${param.qobuzAlbum.qobuz_id})`,
                     error
                 );
             }
@@ -203,17 +215,17 @@ export class MusicMetadataService {
 
         if (!album) {
             const albumData: CreateAlbumData = {
-                labelId: labelId,
-                artistId: artistId,
-                genreId: genreId,
-                upc: qobuzAlbum.upc,
-                data: fullAlbumData ?? qobuzAlbum
+                labelId: param.labelId,
+                artistId: param.artistId,
+                genreId: param.genreId,
+                upc: param.qobuzAlbum.upc,
+                data: fullAlbumData ?? param.qobuzAlbum
             };
 
             album = await AlbumRepository.create(albumData);
         } else {
-            album = await AlbumRepository.updateByQobuzId(qobuzAlbum.qobuz_id, {
-                data: fullAlbumData ?? qobuzAlbum
+            album = await AlbumRepository.updateByQobuzId(param.qobuzAlbum.qobuz_id, {
+                data: fullAlbumData ?? param.qobuzAlbum
             });
         }
 
@@ -253,6 +265,7 @@ export class MusicMetadataService {
         while (offset < items.length) {
             const batch = items.slice(offset, offset + batchSize);
             const batchInfo = await Promise.all(batch);
+            await new Promise((resolve) => setTimeout(resolve, 1000));
             albumInfo.push(...batchInfo);
             offset += batch.length;
         }
