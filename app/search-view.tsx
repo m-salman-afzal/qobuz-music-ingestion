@@ -28,6 +28,7 @@ import {Skeleton} from "@/components/ui/skeleton";
 import {useInView} from "react-intersection-observer";
 import {useSettings} from "@/lib/settings-provider";
 import {useTheme} from "next-themes";
+import {useToast} from "@/hooks/use-toast";
 
 export const filterData: FilterDataType = [
     {
@@ -201,6 +202,8 @@ const SearchView = () => {
 
     const [mounted, setMounted] = useState(false);
 
+    const {toast} = useToast();
+
     useEffect(() => {
         setMounted(true);
     }, []);
@@ -319,10 +322,16 @@ const SearchView = () => {
                             try {
                                 const response = await axios.post(`/api/store-music-metadata?q=${query}`);
                                 if (response.status === 200) {
-                                    console.log("Music metadata stored successfully");
+                                    toast({title: "Success", description: "Music metadata stored successfully"});
+                                    return;
                                 }
+
+                                toast({title: "Error", description: response.data.error});
                             } catch (error: any) {
-                                console.error(error?.response.data?.error || error.message || "An error occurred.");
+                                toast({
+                                    title: "Error",
+                                    description: error?.response.data?.error || error.message || "An error occurred."
+                                });
                             }
                         }}
                         onDownloadAlbums={async (albumCountToDownload: number) => {
@@ -331,10 +340,16 @@ const SearchView = () => {
                                     albumCountToDownload: albumCountToDownload
                                 });
                                 if (response.status === 200) {
-                                    console.log("Albums downloaded successfully");
+                                    toast({title: "Success", description: "Albums downloaded successfully"});
+                                    return;
                                 }
+
+                                toast({title: "Error", description: response.data.error});
                             } catch (error: any) {
-                                console.error(error?.response.data?.error || error.message || "An error occurred.");
+                                toast({
+                                    title: "Error",
+                                    description: error?.response.data?.error || error.message || "An error occurred."
+                                });
                             } finally {
                                 setSearching(false);
                             }
@@ -350,13 +365,22 @@ const SearchView = () => {
                                     }
                                 });
 
+                                console.log("response", response);
+
                                 if (response.status === 200) {
-                                    console.log("CSV processing started:", response.data.data);
+                                    toast({title: "Success", description: "CSV uploaded successfully"});
                                 }
+
+                                // console.log("response", response);
+                                // toast({title: "Error", description: response.data.error});
                             } catch (error: any) {
-                                console.error(
-                                    error?.response.data?.error || error.message || "An error occurred uploading CSV."
-                                );
+                                toast({
+                                    title: "Error",
+                                    description:
+                                        error?.response.data?.error ||
+                                        error.message ||
+                                        "An error occurred uploading CSV."
+                                });
                             }
                         }}
                     />

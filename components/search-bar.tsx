@@ -10,6 +10,7 @@ import axios from "axios";
 import {getAlbum, QobuzAlbum, QobuzSearchResults, QobuzTrack} from "@/lib/qobuz-dl";
 import {Skeleton} from "./ui/skeleton";
 import {AnimatePresence, motion} from "framer-motion";
+import {useToast} from "@/hooks/use-toast";
 
 const SearchBar = ({
     onSearch,
@@ -26,7 +27,7 @@ const SearchBar = ({
     query: string;
     onDownloadMetadata: (query: string) => void;
     onDownloadAlbums: (albumCountToDownload: number) => void;
-    onUploadCsv: (file: File) => void;
+    onUploadCsv: (file: File) => Promise<void>;
 }) => {
     const [searchInput, setSearchInput] = useState(query);
     const [results, setResults] = useState<QobuzSearchResults | null>(null);
@@ -39,6 +40,7 @@ const SearchBar = ({
     const inputRef = useRef<HTMLInputElement>(null);
     const cardRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const {toast} = useToast();
 
     const limit = 5;
 
@@ -97,7 +99,11 @@ const SearchBar = ({
             setIsUploadingCsv(true);
             try {
                 await onUploadCsv(file);
-            } catch (error) {
+            } catch (error: any) {
+                toast({
+                    title: "Error",
+                    description: error.message || "An error occurred uploading CSV."
+                });
                 console.error("Error uploading CSV:", error);
             } finally {
                 setIsUploadingCsv(false);
