@@ -339,6 +339,26 @@ const SearchView = () => {
                                 setSearching(false);
                             }
                         }}
+                        onUploadCsv={async (file: File) => {
+                            try {
+                                const formData = new FormData();
+                                formData.append("csvFile", file);
+
+                                const response = await axios.post("/api/upload-csv", formData, {
+                                    headers: {
+                                        "Content-Type": "multipart/form-data"
+                                    }
+                                });
+
+                                if (response.status === 200) {
+                                    console.log("CSV processing started:", response.data.data);
+                                }
+                            } catch (error: any) {
+                                console.error(
+                                    error?.response.data?.error || error.message || "An error occurred uploading CSV."
+                                );
+                            }
+                        }}
                     />
 
                     <DropdownMenu>

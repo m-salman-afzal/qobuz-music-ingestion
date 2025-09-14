@@ -3,7 +3,7 @@
 import React, {useState, useRef, useEffect, useTransition} from "react";
 import {Input} from "@/components/ui/input";
 import {Button} from "./ui/button";
-import {ArrowDownIcon, ArrowRightIcon, Loader2Icon, SearchIcon} from "lucide-react";
+import {ArrowDownIcon, ArrowRightIcon, Loader2Icon, SearchIcon, UploadIcon} from "lucide-react";
 import {Label} from "./ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "./ui/card";
 import axios from "axios";
@@ -17,7 +17,8 @@ const SearchBar = ({
     setSearching,
     query,
     onDownloadMetadata,
-    onDownloadAlbums
+    onDownloadAlbums,
+    onUploadCsv
 }: {
     onSearch: (query: string, searchFieldInput?: "albums" | "tracks") => void;
     searching: boolean;
@@ -25,6 +26,7 @@ const SearchBar = ({
     query: string;
     onDownloadMetadata: (query: string) => void;
     onDownloadAlbums: (albumCountToDownload: number) => void;
+    onUploadCsv: (file: File) => void;
 }) => {
     const [searchInput, setSearchInput] = useState(query);
     const [results, setResults] = useState<QobuzSearchResults | null>(null);
@@ -33,8 +35,10 @@ const SearchBar = ({
     const [controller, setController] = useState<AbortController>(new AbortController());
     const [isPendingDownload, startTranitionPendingDownload] = useTransition();
     const [albumCountToDownload, setAlbumCountToDownload] = useState<number | null>(null);
+    const [isUploadingCsv, setIsUploadingCsv] = useState<boolean>(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const cardRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const limit = 5;
 
@@ -85,6 +89,24 @@ const SearchBar = ({
         } catch {}
 
         setLoading(false);
+    };
+
+    const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            setIsUploadingCsv(true);
+            try {
+                await onUploadCsv(file);
+            } catch (error) {
+                console.error("Error uploading CSV:", error);
+            } finally {
+                setIsUploadingCsv(false);
+                // Reset file input
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                }
+            }
+        }
     };
 
     useEffect(() => {
@@ -173,6 +195,24 @@ const SearchBar = ({
                 {<ArrowDownIcon />}
                 Download Albums
             </Button>
+            <div className="relative">
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCsvUpload}
+                    className="hidden"
+                    id="csv-upload"
+                />
+                <Button
+                    className="h-11 shrink-0 disabled:bg-muted bg-primary disabled:text-foreground text-primary-foreground hover:text-primary-foreground hover:bg-primary/90"
+                    variant="ghost"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingCsv}>
+                    {isUploadingCsv ? <Loader2Icon className="animate-spin" /> : <UploadIcon />}
+                    Upload CSV
+                </Button>
+            </div>
             <AnimatePresence>
                 {showCard &&
                     searchInput.trim().length > 0 &&
